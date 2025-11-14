@@ -1,8 +1,3 @@
-"""
-Locust load testing untuk CV Screening API
-Jalankan dengan: locust -f locustfile.py --host=http://localhost:8000
-"""
-
 from locust import HttpUser, task, between, events
 from locust.contrib.fasthttp import FastHttpUser
 import json
@@ -18,8 +13,6 @@ class CVScreeningUser(HttpUser):
     def on_start(self):
         """Initialize with test credentials (adjust if auth required)."""
         self.user_token = None
-        # Uncomment if using token auth:
-        # self.login()
 
     def login(self):
         """Authenticate user (if required)."""
@@ -34,7 +27,6 @@ class CVScreeningUser(HttpUser):
     @task(3)
     def upload_cv(self):
         """Upload CV file (3x more frequent than evaluate)."""
-        # Create dummy PDF content
         pdf_content = b'%PDF-1.4\n%test CV content\n'
         
         with self.client.post(
@@ -71,7 +63,7 @@ class CVScreeningUser(HttpUser):
     @task(2)
     def get_evaluation_result(self):
         """Check evaluation job result."""
-        job_id = str(uuid.uuid4())  # In real scenario, use actual job ID
+        job_id = str(uuid.uuid4())
         
         with self.client.get(
             f'/api/result/{job_id}/',
@@ -92,7 +84,7 @@ class CVScreeningUser(HttpUser):
 
 class BurstUser(HttpUser):
     """User that sends burst requests to test throttling."""
-    wait_time = between(0, 1)  # Minimal wait
+    wait_time = between(0, 1)
     
     @task
     def upload_burst(self):
@@ -106,7 +98,6 @@ class BurstUser(HttpUser):
             )
 
 
-# Event handlers for monitoring
 @events.request.add_listener
 def on_request(request_type, name, response_time, response_length, response, context, exception, **kwargs):
     """Log throttle hits (429 responses)."""

@@ -17,11 +17,11 @@ class UploadViewThrottleTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='testpass')
         self.client.force_authenticate(user=self.user)
-        self.upload_url = '/api/upload/'  # adjust if your URL routing differs
+        self.upload_url = '/api/upload/'
 
     def test_upload_throttle_limit_exceeded(self):
         """Test that upload requests exceed throttle limit (5/minute)."""
-        # Create 6 valid file uploads rapidly
+        
         for i in range(6):
             file = SimpleUploadedFile(
                 f'test_{i}.pdf',
@@ -31,10 +31,10 @@ class UploadViewThrottleTests(TestCase):
             response = self.client.post(self.upload_url, {'file': file})
             
             if i < 5:
-                # First 5 should succeed (or be accepted)
+                
                 self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
             else:
-                # 6th should be throttled (429)
+                
                 self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
 
@@ -45,17 +45,17 @@ class EvaluateViewThrottleTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='testpass')
         self.client.force_authenticate(user=self.user)
-        self.evaluate_url = '/api/evaluate/'  # adjust if your URL routing differs
+        self.evaluate_url = '/api/evaluate/'
 
     def test_evaluate_throttle_limit_exceeded(self):
         """Test that evaluation requests exceed throttle limit (2/minute)."""
-        # Create dummy UUIDs for testing
+        
         import uuid
         cv_id = uuid.uuid4()
         project_id = uuid.uuid4()
         job_title = 'Test Job'
 
-        # Create 3 evaluation requests rapidly
+        
         for i in range(3):
             data = {
                 'job_title': job_title,
@@ -69,10 +69,10 @@ class EvaluateViewThrottleTests(TestCase):
             )
             
             if i < 2:
-                # First 2 should succeed (202 ACCEPTED or validation error)
+                
                 self.assertIn(response.status_code, [status.HTTP_202_ACCEPTED, status.HTTP_400_BAD_REQUEST])
             else:
-                # 3rd should be throttled (429)
+                
                 self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
 
@@ -82,8 +82,7 @@ class FileUploadValidationTests(TestCase):
     @override_settings(FILE_UPLOAD_MAX_MEMORY_SIZE=2 * 1024 * 1024)
     def test_file_too_large(self):
         """Test that files larger than limit are rejected."""
-        # Create a file larger than 2MB
-        large_content = b'x' * (3 * 1024 * 1024)  # 3MB
+        large_content = b'x' * (3 * 1024 * 1024)
         file = SimpleUploadedFile(
             'large.pdf',
             large_content,
@@ -91,14 +90,14 @@ class FileUploadValidationTests(TestCase):
         )
         
         serializer = UploadedFileSerializer(data={'file': file})
-        # Note: validation might happen at different stage; adjust if needed
+        
         is_valid = serializer.is_valid()
         if not is_valid:
             self.assertIn('file', serializer.errors)
 
     def test_invalid_content_type(self):
         """Test that non-allowed file types are rejected."""
-        # Create a .txt file (not allowed)
+        
         file = SimpleUploadedFile(
             'test.txt',
             b'some text content',
@@ -118,9 +117,7 @@ class FileUploadValidationTests(TestCase):
             content_type='application/pdf'
         )
         
-        # Serializer validation should pass or fail gracefully
         serializer = UploadedFileSerializer(data={'file': file})
-        # If model validation fails for other reasons, that's OK; we're testing file field
 
 
 class UnauthenticatedAccessTests(TestCase):
