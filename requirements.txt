@@ -1,0 +1,14 @@
+django
+djangorestframework
+celery
+redis
+pypdf2
+chromadb
+langchain
+langchain-google-genai
+djangorestframework-simplejwt
+python-dotenv
+psycopg2-binary
+langchain-community
+django-axes
+django-environ

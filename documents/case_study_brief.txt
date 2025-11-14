@@ -1,0 +1,21 @@
+Case Study Brief
+
+Objective: Build a backend service that automates the initial screening of a job application. The service will receive a candidate's CV and a project report, evaluate them against a specific job description and a case study brief, and produce a structured, AI-generated evaluation report.
+
+Core Logic & Data Flow:
+- Candidate-Provided Inputs: Candidate CV (PDF), Project Report (PDF)
+- System-Internal Documents: Job Description, Case Study Brief, Scoring Rubric
+
+Deliverables:
+1. Backend Service (API endpoints):
+   - POST /upload: Accepts CV and Project Report, returns file IDs.
+   - POST /evaluate: Triggers asynchronous evaluation, returns job ID.
+   - GET /result/{id}: Retrieves evaluation status and result.
+2. Evaluation Pipeline:
+   - RAG for context retrieval.
+   - LLM chaining for CV evaluation, project report evaluation, and final summary.
+   - Handle long-running processes asynchronously.
+   - Implement error handling and control LLM randomness.
+3. Standardized Evaluation Parameters:
+   - CV Evaluation: Technical Skills, Experience Level, Achievements, Cultural Fit.
+   - Project Deliverable Evaluation: Correctness, Code Quality, Resilience, Documentation, Creativity.

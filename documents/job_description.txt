@@ -1,0 +1,19 @@
+Backend Developer Job Description
+
+Role: Backend Developer
+Experience: 2-5 years
+Location: Remote
+
+Responsibilities:
+- Design, build, and maintain scalable and reliable backend services.
+- Work with databases, APIs, and cloud infrastructure.
+- Collaborate with frontend developers and other team members.
+- Write clean, modular, and testable code.
+- Participate in code reviews and contribute to a high-quality codebase.
+
+Technical Skills:
+- Strong proficiency in at least one backend framework (e.g., Django, Rails, Node.js).
+- Experience with relational and non-relational databases.
+- Experience building and consuming RESTful APIs.
+- Familiarity with cloud platforms (e.g., AWS, GCP, Azure).
+- Exposure to AI/LLM technologies is a plus.
