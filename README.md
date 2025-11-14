@@ -33,113 +33,220 @@ This project is a Django-based backend service that automates the initial screen
     source venv/bin/activate
     ```
 
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+*** Begin README replacement
+# AI CV Screening — Detailed README
 
-4.  **Set up environment variables:**
-    Create a `.env` file in the project root and add your Google API key:
-    ```
-    GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY"
-    ```
-    **Note:** You need to have a valid Google API key with the Gemini API enabled.
+This repository contains a Django-based backend service that automates screening of candidate CVs and project reports using a Retrieval-Augmented Generation (RAG) pipeline and an LLM. The system accepts uploaded documents, builds/queries a vector store for context, and runs asynchronous evaluation jobs via Celery.
 
-5.  **Apply database migrations:**
-    ```bash
-    python manage.py migrate
-    ```
+## Contents of this README
+- Project summary
+- Architecture and components
+- Quickstart (development)
+- Configuration and environment variables
+- How to run (dev & production notes)
+- API endpoints and examples
+- Security & hardening measures applied
+- Testing and load testing
+- Deployment notes (Nginx, Gunicorn, Celery)
+- Troubleshooting and helpful commands
+- How to contribute
 
-6.  **Ingest documents into the vector store:**
-    This command will read the files in the `documents` directory and ingest them into the ChromaDB vector store.
-    ```bash
-    python manage.py ingest
-    ```
+## Project summary
 
-## Running the Application
+- Purpose: assist with initial candidate screening by scoring CVs and project reports against job descriptions and evaluation rubrics.
+- Main capabilities: file upload, asynchronous evaluation (Celery), vector search (Chroma), LLM-based scoring (Langchain + Google LLM), REST API (DRF).
 
-You will need to run three separate processes in different terminals:
+## Architecture & components
 
-1.  **Start the Redis server:**
-    Make sure you have Redis installed and running on your machine.
-    ```bash
-    redis-server
-    ```
+- Django project: `cv_screening/`
+- Apps:
+  - `api/` — REST endpoints, serializers, auth
+  - `evaluations/` — models for evaluation jobs, Celery tasks, views for results
+  - `core/` — domain/use-case logic (clean architecture: use cases, interfaces, infra)
+- Async queue: Celery workers; broker & result backend: Redis (configurable)
+- Vector store: Chroma (used via `core/infra/vector_store/chroma.py`)
+- LLM service: Google Gemini integration in `core/infra/llm/google.py`
+- Storage: uploaded files in `media/` (configured in `settings.py`)
 
-2.  **Start the Celery worker:**
-    In the project root directory, run:
-    ```bash
-    celery -A cv_screening worker -l info
-    ```
+## Quickstart — development (Windows / PowerShell)
 
-3.  **Start the Django development server:**
-    ```bash
-    python manage.py runserver
-    ```
+1. Clone the repository and open a PowerShell terminal:
 
-## API Usage
+```powershell
+git clone <repository-url>
+cd cv-screening-master
+```
 
-1.  **Obtain a JWT token:**
-    First, you need to create a user to be able to authenticate.
-    ```bash
-    python manage.py createsuperuser
-    ```
-    Then, send a POST request to `/api/token/` with the user's credentials to get a JWT token pair.
-    ```http
-    POST /api/token/
-    Content-Type: application/json
+2. Create and activate a virtual environment (PowerShell):
 
-    {
-        "username": "your-username",
-        "password": "your-password"
-    }
-    ```
-    You will receive an `access` token and a `refresh` token.
+```powershell
+python -m venv venv
+venv\Scripts\Activate.ps1
+```
 
-2.  **Upload documents:**
-    Send a `POST` request to `/api/upload/` with the CV and project report as `multipart/form-data`. Include the access token in the `Authorization` header.
-    ```http
-    POST /api/upload/
-    Authorization: Bearer <your-access-token>
-    Content-Type: multipart/form-data
+3. Install dependencies:
 
-    --boundary
-    Content-Disposition: form-data; name="file"; filename="cv.pdf"
+```powershell
+pip install -r requirements.txt
+```
 
-    <cv.pdf content>
-    --boundary
-    ```
-    You will receive a file ID for each uploaded document.
+4. Copy example env and edit values:
 
-3.  **Trigger evaluation:**
-    Send a `POST` request to `/api/evaluate/` with the job title and the file IDs.
-    ```http
-    POST /api/evaluate/
-    Authorization: Bearer <your-access-token>
-    Content-Type: application/json
+```powershell
+copy .env.example .env
+# Edit .env with a text editor and add secrets (SECRET_KEY, GOOGLE_API_KEY, etc.)
+```
 
-    {
-        "job_title": "Backend Developer",
-        "cv_id": "your-cv-id",
-        "project_report_id": "your-project-report-id"
-    }
-    ```
-    You will receive a job ID and a `queued` status.
+5. Apply migrations and create a superuser:
 
-4.  **Retrieve results:**
-    Send a `GET` request to `/api/result/<job_id>/` to check the status and retrieve the results once the evaluation is complete.
-    ```http
-    GET /api/result/your-job-id/
-    Authorization: Bearer <your-access-token>
-    ```
+```powershell
+python manage.py migrate
+python manage.py createsuperuser
+```
 
-## Design Choices
+6. (Optional) Ingest reference documents used by RAG:
 
--   **Django**: A robust and scalable framework for building the backend service.
--   **Django Rest Framework**: A powerful and flexible toolkit for building Web APIs in Django.
--   **Celery & Redis**: The standard choice for handling asynchronous tasks in Django, ensuring that the API remains responsive during long-running AI evaluations.
--   **ChromaDB**: A simple and easy-to-use vector store that can be run locally, making it ideal for this project.
--   **Langchain**: Simplifies the development of LLM-powered applications by providing tools for chaining, RAG, and more.
--   **Google Gemini**: A powerful and versatile LLM that is well-suited for the evaluation tasks in this project.
--   **Clean Architecture**: The project is structured to separate concerns, with the API, data models, and AI logic in different apps. This makes the codebase easier to maintain and extend.
--   **JWT Authentication**: Provides a secure and stateless way to authenticate API requests.
+```powershell
+python manage.py ingest
+```
+
+7. Start required services (in separate terminals):
+
+- Redis (must be installed separately) — ensure `redis-server` is running.
+- Celery worker:
+
+```powershell
+celery -A cv_screening worker --loglevel=info
+```
+
+- Django dev server:
+
+```powershell
+python manage.py runserver
+```
+
+You can now interact with the API at http://localhost:8000
+
+## Configuration & environment variables
+
+- Use the `.env` file (template: `.env.example`) — do not commit secrets.
+- Important variables:
+  - `SECRET_KEY` — Django secret key
+  - `DEBUG` — False in production
+  - `ALLOWED_HOSTS` — hostnames for production
+  - `DATABASE_URL` — DB connection (SQLite default; use PostgreSQL in production)
+  - `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND`
+  - `GOOGLE_API_KEY` — LLM provider key
+  - `FILE_UPLOAD_MAX_MEMORY_SIZE` / `DATA_UPLOAD_MAX_MEMORY_SIZE`
+
+Settings to review in `cv_screening/settings.py` include DRF authentication (SimpleJWT), upload limits, throttling rates, and security flags.
+
+## API endpoints (overview)
+
+All API endpoints require authentication (JWT) unless noted otherwise.
+
+- `POST /api/upload/` — Upload a file (CV/project report). Returns uploaded file metadata including `id`.
+  - Throttle: 5 requests/minute (per user/IP)
+  - Valid file types: PDF, DOC, DOCX
+  - Max file size: 2 MB (configurable)
+
+- `POST /api/evaluate/` — Trigger an evaluation job. Body: `{ job_title, cv_id, project_report_id }`.
+  - Creates an `EvaluationJob` record and enqueues a Celery task.
+  - Throttle: 2 requests/minute (per user/IP)
+
+- `GET /api/result/<job_id>/` — Retrieve job status and results.
+
+- Auth endpoints (JWT): `/api/token/`, `/api/token/refresh/` (provided by SimpleJWT)
+
+Refer to `api/views.py` and `api/serializers.py` for exact request/response shapes.
+
+## Security & hardening (what's implemented)
+
+These are the production-minded measures already added to the codebase:
+
+- Application-level rate limiting using DRF throttles (scopes: `upload_cv`, `start_evaluation`, global anon/user limits).
+- Edge/proxy example config (`nginx-config.example`) with `limit_req_zone` and `limit_conn` rules.
+- File upload checks in `api/serializers.py` (size and content-type restrictions).
+- Login brute-force protection with `django-axes` (lockout after failed attempts).
+- Enforced TLS-related settings in `settings.py`: `SECURE_SSL_REDIRECT`, HSTS, secure cookies, `X-Frame-Options`, content-type nosniff, XSS protection.
+- Celery task-level rate/time limits (`@shared_task(rate_limit='5/m', time_limit=300)`).
+- Secrets isolated to `.env` (recommend secret manager for production).
+
+Further recommendations (see `SECURITY_HARDENING.md`): virus scanning (ClamAV), WAF, Sentry/Prometheus monitoring, broker TLS and network isolation, and DB backups.
+
+## Tests & load testing
+
+- Unit tests are in `api/tests.py` (throttle & file validation tests included).
+
+Run tests:
+
+```powershell
+python manage.py test
+```
+
+Load testing with Locust (example included as `locustfile.py`):
+
+```powershell
+pip install locust
+locust -f locustfile.py --host=http://localhost:8000
+```
+
+Open Locust UI at http://localhost:8089 to run scenarios (includes burst users for throttle testing).
+
+## Deployment notes
+
+Recommended production stack:
+
+- Gunicorn as WSGI server (or Daphne/Uvicorn for ASGI if using async features)
+- Nginx as reverse proxy and TLS terminator (see `nginx-config.example`)
+- PostgreSQL database
+- Redis (or RabbitMQ) for Celery broker/result backend — secured and not exposed publicly
+- Systemd service or process supervisor for Gunicorn and Celery workers
+- Logging and monitoring (Sentry for errors, Prometheus/Grafana for metrics)
+
+Sample Gunicorn systemd service and Celery systemd snippets are included in `DEPLOYMENT.md`.
+
+## Troubleshooting & common commands
+
+- Run migrations:
+
+```powershell
+python manage.py migrate
+```
+
+- Run tests with verbosity:
+
+```powershell
+python manage.py test -v 2
+```
+
+- Start a single Celery worker (in project root):
+
+```powershell
+celery -A cv_screening worker --loglevel=info
+```
+
+- If you hit `429 Too Many Requests`, check throttle settings in `cv_screening/settings.py` and the Nginx config for edge limits.
+
+## Code structure and where to look
+
+- `api/views.py` — endpoints for upload/evaluate/result
+- `api/serializers.py` — validation and serialization rules (file validation)
+- `evaluations/tasks.py` — Celery tasks that compose the evaluation use-case
+- `core/application/use_cases/evaluate_candidate.py` — business logic use-case
+- `core/infra/llm/google.py` — LLM integration
+- `core/infra/vector_store/chroma.py` — vector store adapter
+
+## Contributing
+
+- Fork, create a feature branch, run tests, open a pull request.
+- Add unit tests for any new behavior and keep changes small and reviewable.
+
+If you'd like, I can:
+- produce an OpenAPI/Swagger spec for the API,
+- add CI (GitHub Actions) to run lint/tests, or
+- prepare a production-ready `docker-compose` and `Dockerfile` set for containerized deploys.
+
+Thank you — if you want this README tuned (shorter, more diagrams, or include ER diagrams / sequence diagrams), tell me which sections to expand and I'll update it.
+
+*** End README replacement
